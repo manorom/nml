@@ -1,0 +1,13 @@
+[package]
+name = "nml"
+version = "0.1.0"
+authors = ["manorom <manorom@manorom.io>"]
+edition = "2021"
+descriptions = "A parser for fortran's namelist format"
+repository = "https://github.com/manorom/nml/"
+categories = ["encoding", "parser-implementations", "parsing", "config"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = "1.0.160"

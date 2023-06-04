@@ -1,5 +1,5 @@
-use crate::value::{Map, Value};
-use crate::Namelist;
+use crate::namelist::{Array, Item, Map};
+use crate::NamelistGroup;
 
 pub(crate) struct NamelistFormatter<'a> {
     key_prefix: Vec<&'a str>,
@@ -13,10 +13,10 @@ impl<'a> NamelistFormatter<'a> {
     }
     pub(crate) fn fmt_namelist(
         &mut self,
-        namelist: &'a Namelist,
+        namelist: &'a NamelistGroup,
         formatter: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        write!(formatter, " &{}\n", namelist.group_name)?;
+        writeln!(formatter, " &{}", namelist.group_name)?;
         self.fmt_map(&namelist.items, formatter)?;
         write!(formatter, " \\")
     }
@@ -28,23 +28,57 @@ impl<'a> NamelistFormatter<'a> {
     }
     fn fmt_map(
         &mut self,
-        kv: &'a Map<String, Value>,
+        kv: &'a Map<String, Item>,
         formatter: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        for (key, value) in kv {
-            match value {
-                Value::ConstantList(v) => {
-                    write!(formatter, "  ")?; // TODO: indent
+        for (key, item) in kv {
+            match item {
+                Item::Literal(lit) => {
+                    write!(formatter, "  ")?;
                     self.fmt_key_prefix(formatter)?;
-                    write!(formatter, "{} = {},\n", key, v)?;
+                    writeln!(formatter, "{key} = {lit},")?;
                 }
-                Value::Derived(d) => {
-                    self.key_prefix.push(&key);
-                    self.fmt_map(&d, formatter)?;
+                Item::Derived(d) => {
+                    self.key_prefix.push(key);
+                    self.fmt_map(d, formatter)?;
                     self.key_prefix.pop();
+                }
+                Item::Array(array) => {
+                    write!(formatter, "  ")?;
+                    self.fmt_key_prefix(formatter)?;
+                    write!(formatter, "{key} = ")?;
+                    self.fmt_array(array, formatter)?;
+                    write!(formatter, "\n")?;
                 }
             }
         }
+        Ok(())
+    }
+
+    fn fmt_array(
+        &mut self,
+        array: &'a Array,
+        formatter: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        match array {
+            Array::RepeatedConstant(r, lit) => {
+                self.fmt_key_prefix(formatter)?;
+                writeln!(formatter, " = {r}*{lit}")?;
+            }
+            Array::List(list) => {
+                for (r, lit) in list {
+                    if *r > 1 {
+                        write!(formatter, " {r}*{lit},")?;
+                    } else {
+                        write!(formatter, " {r},")?;
+                    }
+                }
+            }
+            Array::Indexed(_map) => {
+                unimplemented!()
+            }
+        }
+
         Ok(())
     }
 }

@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Position {
     pub(crate) line: usize,
     pub(crate) col: usize,
@@ -51,7 +51,7 @@ impl<'a> Reader<'a> {
     }
 
     pub fn peek_next_byte(&mut self) -> Option<u8> {
-        self.read_pos.peek().map(|b| *b)
+        self.read_pos.peek().copied()
     }
 
     pub fn position(&self) -> Position {

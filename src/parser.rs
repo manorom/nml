@@ -1,10 +1,8 @@
 use crate::reader::Reader;
 use crate::Result;
-use crate::{error::NamelistError, namelist::Namelist};
+use crate::{error::NamelistError, namelist::NamelistGroup};
 
-use crate::constant::{Constant, LiteralConstant};
-use crate::constant_list::ConstantList;
-use crate::value::{Map, Value};
+use crate::namelist::{Array, Item, LiteralConstant, Map};
 
 pub struct Parser<'a> {
     reader: Reader<'a>,
@@ -86,6 +84,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_index(&mut self) -> Result<usize> {
+        let idx_begin = self.reader.offset();
+        while self.reader.peek_next_byte().map(|b| b.is_ascii_digit()) == Some(true) {
+            self.reader.skip_byte();
+        }
+        let slice = self.reader.get_str(idx_begin, self.reader.offset());
+        slice
+            .parse::<usize>()
+            .map_err(|e| NamelistError::parse_index(e, self.reader.position()))
+    }
+
     fn parse_numeric(&mut self) -> Result<LiteralConstant> {
         let literal_begin = self.reader.offset();
         let mut is_float = false;
@@ -140,6 +149,7 @@ impl<'a> Parser<'a> {
             Some(b'\'') => true,
             Some(b'.') => true,
             Some(b'-') => true,
+            Some(b',') => true,
             Some(b) if b.is_ascii_digit() => true,
             _ => false,
         }
@@ -152,12 +162,12 @@ impl<'a> Parser<'a> {
             Some(b) if b.is_ascii_digit() => self.parse_numeric(),
             Some(b'"') | Some(b'\'') => self.parse_string(),
             Some(b',') => Ok(LiteralConstant::Null),
-            Some(_) => return Err(self.parse_unexpected_token("a literal constant or ','")),
-            None => return Err(self.unexpected_eof()),
+            Some(_) => Err(self.parse_unexpected_token("a literal constant or ','")),
+            None => Err(self.unexpected_eof()),
         }
     }
 
-    fn parse_constant(&mut self) -> Result<Constant> {
+    fn parse_compound_constant(&mut self) -> Result<(usize, LiteralConstant)> {
         self.reader.skip_whitespace();
 
         let first_literal = self.parse_literal_constant()?;
@@ -170,80 +180,150 @@ impl<'a> Parser<'a> {
                     self.reader.skip_byte();
                     self.reader.skip_whitespace();
                     let real_first_literal = self.parse_literal_constant()?;
-                    Ok(Constant::Repeated(i as usize, real_first_literal))
+                    Ok((i as usize, real_first_literal))
                 }
                 _ => Err(NamelistError::SyntaxError(self.reader.position())),
             }
         } else {
-            Ok(Constant::Literal(first_literal))
+            Ok((1, first_literal))
         }
     }
 
-    fn parse_constant_list(&mut self) -> Result<ConstantList> {
+    fn parse_rhs(&mut self) -> Result<Item> {
         self.reader.skip_whitespace();
-        let first_constant = self.parse_constant()?;
-        let mut constant_list = ConstantList::Single(first_constant);
+
+        let (num_first_constants, first_constant) = self.parse_compound_constant()?;
+
         self.reader.skip_whitespace();
         self.skip_value_seperator();
         self.reader.skip_whitespace();
 
-        while self.peek_constant() {
-            let next_value = self.parse_constant()?;
-            if constant_list.is_type_compatible(&next_value) {
-                constant_list.push(next_value);
-            } else {
-                panic!()
+        if self.peek_constant() {
+            let mut array = vec![(num_first_constants, first_constant)];
+            while self.peek_constant() {
+                let (r, c) = self.parse_compound_constant()?;
+                self.skip_value_seperator();
+                array.push((r, c));
+                self.reader.skip_whitespace();
             }
-            self.reader.skip_whitespace();
-            self.skip_value_seperator();
-            self.reader.skip_whitespace();
+            Ok(Array::List(array).into_item())
+        } else if num_first_constants > 1 {
+            Ok(Array::RepeatedConstant(num_first_constants, first_constant).into_item())
+        } else {
+            Ok(first_constant.into_item())
         }
-        Ok(constant_list)
     }
 
-    fn parse_name_value_pairs(&mut self, keyvals: &mut Map<String, Value>) -> Result<()> {
+    fn parse_index_value_pairs(&mut self, idxvals: &mut Map<usize, Item>) -> Result<()> {
+        self.reader.skip_whitespace();
+        let idx = self.parse_index()?;
+
+        self.reader.skip_whitespace();
+
+        match self.reader.peek_next_byte() {
+            Some(b')') => Ok(()),
+            Some(_) => Err(self.parse_unexpected_token(")")),
+            None => Err(self.unexpected_eof()),
+        }?;
+        self.reader.skip_byte();
+        self.reader.skip_whitespace();
+
+        match self.reader.peek_next_byte() {
+            Some(b'%') => {
+                let next_keyvals = match idxvals
+                    .entry(idx)
+                    .or_insert_with(|| Item::Derived(Map::new()))
+                {
+                    Item::Derived(m) => m,
+                    _ => {
+                        return Err(NamelistError::AlreadyAssignedIndexed {
+                            idx,
+                            position: self.reader.position(),
+                        })
+                    }
+                };
+                self.reader.skip_whitespace();
+                self.parse_name_value_pairs(next_keyvals)
+            }
+            Some(b'=') => {
+                self.reader.skip_byte();
+                self.reader.skip_whitespace();
+                let rhs = self.parse_rhs()?;
+
+                if idxvals.contains_key(&idx) {
+                    return Err(NamelistError::AlreadyAssignedIndexed {
+                        idx,
+                        position: self.reader.position(),
+                    });
+                }
+
+                idxvals.insert(idx, rhs);
+
+                Ok(())
+            }
+            Some(_) => Err(self.parse_unexpected_token("% or =")),
+            None => Err(self.unexpected_eof()),
+        }
+    }
+
+    fn parse_name_value_pairs(&mut self, keyvals: &mut Map<String, Item>) -> Result<()> {
         let key = self.parse_identifier()?;
         self.reader.skip_whitespace();
 
-        if self.reader.peek_next_byte() == Some(b'%') {
-            self.reader.skip_byte();
+        match self.reader.peek_next_byte() {
+            Some(b'%') => {
+                self.reader.skip_byte();
 
-            let next_keyvals = match keyvals
-                .entry(key.to_owned())
-                .or_insert_with(|| Value::Derived(Map::new()))
-            {
-                Value::Derived(m) => m,
-                _ => {
+                let next_keyvals = match keyvals
+                    .entry(key.to_owned())
+                    .or_insert_with(|| Item::Derived(Map::new()))
+                {
+                    Item::Derived(m) => m,
+                    _ => {
+                        return Err(NamelistError::AlreadyAssigned {
+                            key: key.to_owned(),
+                            position: self.reader.position(),
+                        })
+                    }
+                };
+                self.reader.skip_whitespace();
+                self.parse_name_value_pairs(next_keyvals)
+            }
+            Some(b'(') => {
+                self.reader.skip_byte();
+
+                let next_idxvals = match keyvals
+                    .entry(key.to_owned())
+                    .or_insert_with(|| Array::new_indexed())
+                {
+                    Item::Array(Array::Indexed(idxmap)) => idxmap,
+                    _ => {
+                        return Err(NamelistError::AlreadyAssigned {
+                            key: key.to_owned(),
+                            position: self.reader.position(),
+                        })
+                    }
+                };
+                self.parse_index_value_pairs(next_idxvals)
+            }
+            Some(b'=') => {
+                self.reader.skip_byte();
+                self.reader.skip_whitespace();
+                let rhs = self.parse_rhs()?;
+
+                if keyvals.contains_key(key) {
                     return Err(NamelistError::AlreadyAssigned {
                         key: key.to_owned(),
                         position: self.reader.position(),
-                    })
+                    });
                 }
-            };
-            self.reader.skip_whitespace();
-            self.parse_name_value_pairs(next_keyvals)
-        } else {
-            // expecting '='
-            match self.reader.next_byte() {
-                Some(b'=') => (),
-                Some(_) => return Err(self.parse_unexpected_token("/")),
-                None => return Err(self.unexpected_eof()),
+
+                keyvals.insert(key.to_owned(), rhs);
+
+                Ok(())
             }
-
-            self.reader.skip_whitespace();
-
-            let constant_list = self.parse_constant_list()?;
-
-            if keyvals.contains_key(key) {
-                return Err(NamelistError::AlreadyAssigned {
-                    key: key.to_owned(),
-                    position: self.reader.position(),
-                });
-            }
-
-            keyvals.insert(key.to_owned(), Value::ConstantList(constant_list));
-
-            Ok(())
+            Some(_) => Err(self.parse_unexpected_token("% or =")),
+            None => Err(self.unexpected_eof()),
         }
     }
     fn parse_begin(&mut self) -> Result<&'a str> {
@@ -257,6 +337,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_unexpected_token(&mut self, expected: &str) -> NamelistError {
+        self.reader.skip_whitespace();
         let pos = self.reader.position();
         let start_offset = self.reader.offset();
         while self
@@ -278,7 +359,7 @@ impl<'a> Parser<'a> {
         NamelistError::UnexpectedEOF(self.reader.position())
     }
 
-    pub fn parse(&mut self) -> Result<Namelist> {
+    pub fn parse(&mut self) -> Result<NamelistGroup> {
         self.reader.skip_whitespace();
         let identifier = self.parse_begin()?;
         self.reader.skip_whitespace();
@@ -289,18 +370,18 @@ impl<'a> Parser<'a> {
             self.reader.skip_whitespace();
         }
 
-        match self.reader.next_byte() {
-            Some(b'/') => (),
+        match self.reader.peek_next_byte() {
+            Some(b'/') => self.reader.skip_byte(),
             Some(_) => return Err(self.parse_unexpected_token("/")),
             None => return Err(self.unexpected_eof()),
         }
 
-        Ok(Namelist::new(identifier, keyvals))
+        Ok(NamelistGroup::new(identifier, keyvals))
     }
 }
 
 impl<'a> Iterator for Parser<'a> {
-    type Item = Result<Namelist>;
+    type Item = Result<NamelistGroup>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.reader.skip_whitespace();
@@ -309,5 +390,25 @@ impl<'a> Iterator for Parser<'a> {
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test() {
+        println!(
+            "{:?}",
+            Parser::new(
+                r#"&nml
+ a%b(1)%a = 1
+/
+"#
+            )
+            .parse()
+        );
+        assert!(false);
     }
 }

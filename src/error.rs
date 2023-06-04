@@ -3,7 +3,7 @@ use std::num::ParseIntError;
 
 use crate::reader::Position;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum NamelistError {
     UnexpectedToken {
         found: String,
@@ -18,12 +18,22 @@ pub enum NamelistError {
         error: ParseFloatError,
         position: Position,
     },
+    ParseIndex {
+        error: ParseIntError,
+        position: Position,
+    },
     UnexpectedEOF(Position),
     SyntaxError(Position),
     AlreadyAssigned {
         key: String,
         position: Position,
     },
+    AlreadyAssignedIndexed {
+        idx: usize,
+        position: Position,
+    },
+    UnsupportedSerialization,
+    Custom(String),
 }
 
 impl NamelistError {
@@ -54,6 +64,14 @@ impl NamelistError {
     pub(crate) fn parse_float(error: ParseFloatError, position: Position) -> NamelistError {
         NamelistError::ParseFloat { error, position }
     }
+
+    pub(crate) fn parse_index(error: ParseIntError, position: Position) -> NamelistError {
+        NamelistError::ParseIndex { error, position }
+    }
+
+    pub(crate) fn custom(string: String) -> Self {
+        NamelistError::Custom(string)
+    }
 }
 
 impl std::fmt::Display for NamelistError {
@@ -76,11 +94,22 @@ impl std::fmt::Display for NamelistError {
             NamelistError::ParseFloat { error, position } => {
                 write!(f, "Failed to parse float at position {position}: {error}")?
             }
+            NamelistError::ParseIndex { error, position } => {
+                write!(f, "Failed to parse index at position {position}: {error}")?
+            }
             NamelistError::SyntaxError(position) => {
                 write!(f, "Syntax error at position {position}")?
             }
             NamelistError::AlreadyAssigned { key, position } => {
                 write!(f, "Repeated assignment to key {key} at position {position}")?
+            }
+            NamelistError::AlreadyAssignedIndexed { idx, position } => write!(
+                f,
+                "Repeated assignment to index {idx} at position {position}"
+            )?,
+            NamelistError::Custom(string) => write!(f, "{string}")?,
+            NamelistError::UnsupportedSerialization => {
+                write!(f, "serialization is not supported (yet)")?
             }
         }
 

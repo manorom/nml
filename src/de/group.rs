@@ -14,10 +14,13 @@ pub struct GroupDeserializer {
 }
 
 impl GroupDeserializer {
-    pub fn new(namelist: NamelistGroup) -> GroupDeserializer {
+    pub(crate) fn new(namelist: NamelistGroup) -> GroupDeserializer {
         GroupDeserializer {
             parsed_group: namelist,
         }
+    }
+    pub fn name(&self) -> &str {
+        &self.parsed_group.group_name
     }
 }
 

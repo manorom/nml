@@ -4,7 +4,7 @@ use crate::namelist::Item;
 use crate::namelist::Map;
 use crate::namelist::MapIntoIter;
 
-struct KeyDeserializer(String);
+pub(super) struct KeyDeserializer(pub(super) String);
 
 impl<'de> serde::de::Deserializer<'de> for KeyDeserializer {
     type Error = NamelistError;

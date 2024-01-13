@@ -1,5 +1,5 @@
+use crate::namelist::NamelistGroup;
 use crate::namelist::{Array, Item, Map};
-use crate::NamelistGroup;
 
 pub(crate) struct NamelistFormatter<'a> {
     key_prefix: Vec<&'a str>,

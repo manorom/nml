@@ -5,4 +5,4 @@ mod derived;
 mod group;
 mod item;
 
-pub use group::GroupDeserializer;
+pub use group::{GroupDeserializer, GroupRefDeserializer};

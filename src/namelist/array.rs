@@ -101,3 +101,59 @@ impl Iterator for ArrayIter {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub enum ItemRef<'a> {
+    Item(&'a Item),
+    Literal(&'a LiteralConstant),
+    Null,
+}
+
+pub struct ArrayRefIter<'a>(Box<dyn Iterator<Item = ItemRef<'a>> + 'a>);
+
+impl<'a> ArrayRefIter<'a> {
+    fn new(array: &'a Array) -> ArrayRefIter<'a> {
+        match array {
+            Array::RepeatedConstant(repeats, literal) => ArrayRefIter(Box::new(
+                std::iter::repeat(literal)
+                    .take(*repeats)
+                    .map(|lit| ItemRef::Literal(lit)),
+            )),
+            Array::List(list) => ArrayRefIter(Box::new(
+                list.iter()
+                    .map(|(repeats, literal)| {
+                        std::iter::repeat(literal)
+                            .take(*repeats)
+                            .map(|lit| ItemRef::Literal(lit))
+                    })
+                    .flatten(),
+            )),
+            Array::Indexed(map) => {
+                let min = map.keys().cloned().min().unwrap_or(1);
+                let max = map.keys().cloned().max().unwrap_or(1);
+                ArrayRefIter(Box::new((min..=max).map(|idx| match map.get(&idx) {
+                    Some(item) => ItemRef::Item(item),
+                    None => ItemRef::Null,
+                })))
+            }
+        }
+    }
+}
+
+impl<'a> Iterator for ArrayRefIter<'a> {
+    type Item = ItemRef<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
+impl<'a> IntoIterator for &'a Array {
+    type Item = ItemRef<'a>;
+
+    type IntoIter = ArrayRefIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ArrayRefIter::new(self)
+    }
+}

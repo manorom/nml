@@ -1,4 +1,4 @@
-use crate::de::GroupDeserializer;
+use crate::de::{GroupDeserializer, GroupRefDeserializer};
 use crate::error::NamelistError;
 use crate::formatter::NamelistFormatter;
 use crate::parser::Parser;
@@ -11,9 +11,10 @@ mod item;
 mod literal_constant;
 
 pub type Map<K, V> = std::collections::BTreeMap<K, V>;
+pub type MapIter<'a, K, V> = std::collections::btree_map::Iter<'a, K, V>;
 pub type MapIntoIter<K, V> = std::collections::btree_map::IntoIter<K, V>;
 
-pub(crate) use array::{Array, ArrayIter};
+pub(crate) use array::{Array, ArrayIter, ArrayRefIter, ItemRef};
 pub(crate) use item::Item;
 pub(crate) use literal_constant::LiteralConstant;
 
@@ -203,10 +204,11 @@ impl NamelistInput {
         Ok(NamelistInput(map))
     }
 
-    /// Takes all namelist groups with the `group_name` from the input and
-    /// returns a `GroupDeserializer` for each group.
-    ///
-    /// Note that this removes all groups with `group_name` from the `NamelistInput`
+    /// Returns an Iterator over all namelist groups with matching `group_name`
+    /// from the input, producing a [`GroupDeserializer`] for each group.
+    /// Note that this removes all groups with `group_name` from the
+    /// [`NamelistInput`] because [`GroupDeserializer`] takes ownership of the
+    /// parsed Namelist group from [`NamelistInput`].
     pub fn take_groups(&mut self, group_name: &str) -> impl Iterator<Item = GroupDeserializer> {
         self.0
             .remove(group_name)
@@ -214,40 +216,44 @@ impl NamelistInput {
             .flatten()
             .map(|namelist_group| GroupDeserializer::new(namelist_group))
     }
-}
 
-impl IntoIterator for NamelistInput {
-    type IntoIter = NamelistInputIterator;
-    type Item = GroupDeserializer;
-
-    fn into_iter(self) -> NamelistInputIterator {
-        NamelistInputIterator {
-            first: self.0.into_iter(),
-            second: None,
-        }
+    /// Returns an Iterator over all groups with matching `group_name` from the 
+    /// input, producing a [`GroupRefDeserializer`] for each group.
+    /// The [`GroupRefDeserializer`] holds a reference to the [`NamelistInput`]
+    /// instance, which continues to own the parse Namelist group.
+    pub fn groups(&self, group_name: &str) -> impl Iterator<Item = GroupRefDeserializer> {
+        self.0
+            .get(group_name)
+            .into_iter()
+            .flatten()
+            .map(|namelist_group| GroupRefDeserializer::new(namelist_group))
     }
 }
 
-pub struct NamelistInputIterator {
-    first: MapIntoIter<String, Vec<NamelistGroup>>,
-    second: Option<std::vec::IntoIter<NamelistGroup>>,
+impl IntoIterator for NamelistInput {
+    type IntoIter = Box<dyn Iterator<Item = GroupDeserializer>>;
+    type Item = GroupDeserializer;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Box::new(
+            self.0
+                .into_iter()
+                .map(|(_, v)| v.into_iter().map(|group| GroupDeserializer::new(group)))
+                .flatten()
+        )
+    }
 }
 
-impl Iterator for NamelistInputIterator {
-    type Item = GroupDeserializer;
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(ref mut second) = self.second {
-            let next = second.next();
-            if let Some(next) = next {
-                return Some(GroupDeserializer::new(next));
-            }
-        }
+impl<'a> IntoIterator for &'a NamelistInput {
+    type IntoIter = Box<dyn Iterator<Item = GroupRefDeserializer<'a>> + 'a>;
+    type Item = GroupRefDeserializer<'a>;
 
-        if let Some((_, v)) = self.first.next() {
-            self.second = Some(v.into_iter());
-            return self.next();
-        }
-
-        None
+    fn into_iter(self) -> Self::IntoIter {
+        Box::new(
+            self.0
+                .iter()
+                .map(|(_, v)| v.iter().map(|group| GroupRefDeserializer::new(group)))
+                .flatten()
+        )
     }
 }

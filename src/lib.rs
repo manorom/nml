@@ -136,6 +136,7 @@ mod ser;
 pub use error::NamelistError;
 pub type Result<T> = std::result::Result<T, NamelistError>;
 pub use de::GroupDeserializer;
+pub use de::GroupRefDeserializer;
 pub use namelist::group_from_str;
 pub use namelist::group_to_string;
 pub use namelist::NamelistInput;

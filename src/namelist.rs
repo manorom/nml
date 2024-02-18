@@ -128,7 +128,7 @@ where
         .map(|nml| format!("{nml}"))
 }
 
-/// A structure holding a parsed namelist input. This is the interface to use if
+/// A struct holding a parsed namelist input. This is the interface to use if
 /// you have namelist input (file) with more than one namelist groups.
 ///
 /// A namelist input can contain one or more namelist groups, each with a group
@@ -217,7 +217,7 @@ impl NamelistInput {
             .map(|namelist_group| GroupDeserializer::new(namelist_group))
     }
 
-    /// Returns an Iterator over all groups with matching `group_name` from the 
+    /// Returns an Iterator over all groups with matching `group_name` from the
     /// input, producing a [`GroupRefDeserializer`] for each group.
     /// The [`GroupRefDeserializer`] holds a reference to the [`NamelistInput`]
     /// instance, which continues to own the parse Namelist group.
@@ -239,7 +239,7 @@ impl IntoIterator for NamelistInput {
             self.0
                 .into_iter()
                 .map(|(_, v)| v.into_iter().map(|group| GroupDeserializer::new(group)))
-                .flatten()
+                .flatten(),
         )
     }
 }
@@ -253,7 +253,7 @@ impl<'a> IntoIterator for &'a NamelistInput {
             self.0
                 .iter()
                 .map(|(_, v)| v.iter().map(|group| GroupRefDeserializer::new(group)))
-                .flatten()
+                .flatten(),
         )
     }
 }

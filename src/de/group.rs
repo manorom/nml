@@ -11,6 +11,7 @@ impl serde::de::Error for NamelistError {
 
 /// A structure that deserializes a Namelist Group into Rust values. This
 /// structure owns the parsed Namelist Group.
+#[derive(Debug)]
 pub struct GroupDeserializer {
     parsed_group: NamelistGroup,
 }
@@ -21,6 +22,8 @@ impl GroupDeserializer {
             parsed_group: namelist,
         }
     }
+
+    /// Returns the group name of the parsed Namelist
     pub fn name(&self) -> &str {
         &self.parsed_group.group_name
     }
@@ -75,11 +78,17 @@ impl<'de> serde::de::Deserializer<'de> for GroupDeserializer {
 
 /// A structure that deserializes a Namelist group into Rust values. This
 /// structure only holds a reference of the parse namelist group.
+#[derive(Debug, Clone, Copy)]
 pub struct GroupRefDeserializer<'a>(&'a NamelistGroup);
 
 impl<'a> GroupRefDeserializer<'a> {
-    pub fn new(namelist_group: &'a NamelistGroup) -> GroupRefDeserializer<'a> {
+    pub(crate) fn new(namelist_group: &'a NamelistGroup) -> GroupRefDeserializer<'a> {
         GroupRefDeserializer(namelist_group)
+    }
+
+    /// Returns the group name of the parsed Namelist
+    pub fn name(&self) -> &str {
+        &self.0.group_name
     }
 }
 

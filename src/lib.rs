@@ -1,4 +1,4 @@
-//! A serde library for Fortran namelist inputs.
+//! A serde library for Fortran Namelist inputs.
 //!
 //! Namelists are a Fortran 90 feature for input and output of groups of
 //! variables in a key-value assignment format.
@@ -21,9 +21,8 @@
 //!
 //! # Usage
 //!
-//! ## Namelist Groups
-//!
-//! To serialize and deserialize a Rust struct as a namelist group, you can:
+//! To serialize and deserialize a Rust struct (or map) as a Namelist group,
+//! you can use the [`group_from_str`] and [`group_to_string`] methods:
 //!
 //! ```rust
 //! use serde::{Serialize, Deserialize};
@@ -52,10 +51,9 @@
 //! }
 //! ```
 //!
-//! ## Multiple Namelist Groups
-//!
-//! To deserialize a namelist input (file), consisting of one or more namelist
-//! groups, into Rust structs, you can use the [`NamelistInput`] type:
+//! To deserialize multiple Namelist groups (with the same or different group
+//! name) from a single input into Rust structs or maps, you can use the
+//! [`NamelistInput`] type:
 //!
 //! ```rust
 //! use serde::Deserialize;
@@ -76,7 +74,7 @@
 //!    let s = r#"
 //!        &simulation
 //!          start_time: 0,
-//!          timesteps: 10
+//!          timesteps: 10,
 //!        /
 //!        &particle
 //!         index = 0,
@@ -93,7 +91,7 @@
 //!    let mut simulation = None;
 //!    let mut particles = Vec::new();
 //!
-//!    for group in input.into_iter() {
+//!    for group in &input {
 //!        if group.name() == "particle" {
 //!            let particle = Particle::deserialize(group)?;
 //!            particles.push(particle);
@@ -107,7 +105,7 @@
 //!
 //! As you can see, the [`NamelistInput`] type can parse multiple namelist
 //! groups and can be transformed into an iterator which yields one instance of
-//! [`GroupDeserializer`] for each namelist group in the input.
+//! [`GroupRefDeserializer`] for each namelist group in the input.
 //! This type  can be used to deserialize the namelist group into Rust structs
 //! or maps.
 //!

@@ -239,9 +239,9 @@ impl serde::ser::SerializeTuple for SerializeList {
     {
         let lit = if let Item::Literal(lit) = value.serialize(SerializeItem)? {
             if self.is_type_compatible(&lit) {
-                Err(NamelistError::UnsupportedSerialization)
-            } else {
                 Ok(lit)
+            } else {
+                Err(NamelistError::UnsupportedSerialization)
             }
         } else {
             Err(NamelistError::UnsupportedSerialization)

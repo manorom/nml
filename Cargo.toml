@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["manorom <manorom@manorom.io>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "A parser for fortran's namelist format"
+description = "A parser and Serde implementation for the Fortran Namelist format"
 repository = "https://github.com/manorom/nml/"
 categories = ["encoding", "parser-implementations", "parsing", "config"]
 

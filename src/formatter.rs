@@ -18,7 +18,7 @@ impl<'a> NamelistFormatter<'a> {
     ) -> std::fmt::Result {
         writeln!(formatter, " &{}", namelist.group_name)?;
         self.fmt_map(&namelist.items, formatter)?;
-        write!(formatter, " \\")
+        write!(formatter, " /")
     }
     fn fmt_key_prefix(&mut self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for p in &self.key_prefix {

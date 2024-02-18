@@ -34,7 +34,7 @@ impl std::fmt::Display for LiteralConstant {
             LiteralConstant::Bool(true) => write!(f, ".TRUE."),
             LiteralConstant::Bool(false) => write!(f, ".FALSE."),
             LiteralConstant::Int(i) => write!(f, "{i}"),
-            LiteralConstant::Float(n) => write!(f, "{n}"),
+            LiteralConstant::Float(n) => write!(f, "{n:?}"),
             LiteralConstant::String(s) => write!(f, "'{s}'"),
         }
     }

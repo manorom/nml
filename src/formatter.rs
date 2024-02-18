@@ -70,7 +70,7 @@ impl<'a> NamelistFormatter<'a> {
                     if *r > 1 {
                         write!(formatter, " {r}*{lit},")?;
                     } else {
-                        write!(formatter, " {r},")?;
+                        write!(formatter, " {lit},")?;
                     }
                 }
             }

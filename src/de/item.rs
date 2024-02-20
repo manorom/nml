@@ -1,4 +1,4 @@
-use super::NamelistError;
+use super::Error;
 use crate::namelist::Item;
 use crate::namelist::LiteralConstant;
 
@@ -8,7 +8,7 @@ use super::derived::{BorrowedItemMapAccess, ItemMapAccess};
 pub fn deserialize_literal_constant<'de, V>(
     lit: &LiteralConstant,
     visitor: V,
-) -> Result<V::Value, NamelistError>
+) -> Result<V::Value, Error>
 where
     V: serde::de::Visitor<'de>,
 {
@@ -24,7 +24,7 @@ where
 pub struct BorrowedLiteralDeserializer<'a>(pub &'a LiteralConstant);
 
 impl<'de, 'a> serde::Deserializer<'de> for BorrowedLiteralDeserializer<'a> {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -51,7 +51,7 @@ impl<'a> BorrowedItemDeserializer<'a> {
 }
 
 impl<'de, 'a> serde::Deserializer<'de> for BorrowedItemDeserializer<'a> {
-    type Error = NamelistError;
+    type Error = Error;
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
@@ -92,7 +92,7 @@ impl ItemDeserializer {
 }
 
 impl<'de> serde::Deserializer<'de> for ItemDeserializer {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where

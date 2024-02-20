@@ -1,25 +1,25 @@
-use super::NamelistError;
+use super::Error;
 use crate::namelist::LiteralConstant;
 
 pub struct LiteralSerializer;
 
 impl serde::ser::Serializer for LiteralSerializer {
     type Ok = LiteralConstant;
-    type Error = NamelistError;
+    type Error = Error;
 
-    type SerializeTuple = serde::ser::Impossible<LiteralConstant, NamelistError>;
+    type SerializeTuple = serde::ser::Impossible<LiteralConstant, Error>;
 
-    type SerializeTupleStruct = serde::ser::Impossible<LiteralConstant, NamelistError>;
+    type SerializeTupleStruct = serde::ser::Impossible<LiteralConstant, Error>;
 
-    type SerializeTupleVariant = serde::ser::Impossible<LiteralConstant, NamelistError>;
+    type SerializeTupleVariant = serde::ser::Impossible<LiteralConstant, Error>;
 
-    type SerializeMap = serde::ser::Impossible<LiteralConstant, NamelistError>;
+    type SerializeMap = serde::ser::Impossible<LiteralConstant, Error>;
 
-    type SerializeStruct = serde::ser::Impossible<LiteralConstant, NamelistError>;
+    type SerializeStruct = serde::ser::Impossible<LiteralConstant, Error>;
 
-    type SerializeStructVariant = serde::ser::Impossible<LiteralConstant, NamelistError>;
+    type SerializeStructVariant = serde::ser::Impossible<LiteralConstant, Error>;
 
-    type SerializeSeq = serde::ser::Impossible<LiteralConstant, NamelistError>;
+    type SerializeSeq = serde::ser::Impossible<LiteralConstant, Error>;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
         Ok(LiteralConstant::Bool(v))
@@ -56,7 +56,7 @@ impl serde::ser::Serializer for LiteralSerializer {
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
         self.serialize_u32(
             v.try_into()
-                .map_err(|_| NamelistError::UnsupportedSerialization)?,
+                .map_err(|_| Error::UnsupportedSerialization)?,
         )
     }
 
@@ -77,7 +77,7 @@ impl serde::ser::Serializer for LiteralSerializer {
     }
 
     fn serialize_bytes(self, _v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
@@ -105,7 +105,7 @@ impl serde::ser::Serializer for LiteralSerializer {
         _variant_index: u32,
         _variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_newtype_struct<T: ?Sized>(
@@ -116,7 +116,7 @@ impl serde::ser::Serializer for LiteralSerializer {
     where
         T: serde::Serialize,
     {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_newtype_variant<T: ?Sized>(
@@ -129,15 +129,15 @@ impl serde::ser::Serializer for LiteralSerializer {
     where
         T: serde::Serialize,
     {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_tuple_struct(
@@ -145,7 +145,7 @@ impl serde::ser::Serializer for LiteralSerializer {
         _name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_tuple_variant(
@@ -155,11 +155,11 @@ impl serde::ser::Serializer for LiteralSerializer {
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_struct(
@@ -167,7 +167,7 @@ impl serde::ser::Serializer for LiteralSerializer {
         _name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 
     fn serialize_struct_variant(
@@ -177,6 +177,6 @@ impl serde::ser::Serializer for LiteralSerializer {
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::UnsupportedSerialization)
     }
 }

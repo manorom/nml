@@ -1,4 +1,4 @@
-use crate::{error::NamelistError, namelist::NamelistGroup};
+use crate::{error::Error, namelist::NamelistGroup};
 
 mod array;
 mod derived;

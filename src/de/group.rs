@@ -1,11 +1,11 @@
-use super::{derived, NamelistError, NamelistGroup};
+use super::{derived, Error, NamelistGroup};
 
-impl serde::de::Error for NamelistError {
+impl serde::de::Error for Error {
     fn custom<T>(msg: T) -> Self
     where
         T: std::fmt::Display,
     {
-        NamelistError::custom(msg.to_string())
+        Error::serde(msg.to_string())
     }
 }
 
@@ -30,7 +30,7 @@ impl GroupDeserializer {
 }
 
 impl<'de> serde::de::Deserializer<'de> for GroupDeserializer {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -93,7 +93,7 @@ impl<'a> GroupRefDeserializer<'a> {
 }
 
 impl<'de, 'a> serde::de::Deserializer<'de> for GroupRefDeserializer<'a> {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where

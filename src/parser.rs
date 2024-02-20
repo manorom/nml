@@ -1,6 +1,6 @@
 use crate::reader::Reader;
 use crate::Result;
-use crate::{error::NamelistError, namelist::NamelistGroup};
+use crate::{error::Error, namelist::NamelistGroup};
 
 use crate::namelist::{Array, Item, LiteralConstant, Map};
 
@@ -35,7 +35,7 @@ impl<'a> Parser<'a> {
         };
 
         if !first_byte.is_ascii_alphabetic() {
-            return Err(NamelistError::unexpected_byte(
+            return Err(Error::unexpected_byte(
                 first_byte,
                 "identifier",
                 self.reader.position(),
@@ -76,7 +76,7 @@ impl<'a> Parser<'a> {
         } else if literal == ".FALSE." || literal == ".false." {
             Ok(LiteralConstant::Bool(false))
         } else {
-            Err(NamelistError::unexpected_token(
+            Err(Error::unexpected_token(
                 literal,
                 ".TRUE. or .FALSE.",
                 self.reader.position(),
@@ -92,7 +92,7 @@ impl<'a> Parser<'a> {
         let slice = self.reader.get_str(idx_begin, self.reader.offset());
         slice
             .parse::<usize>()
-            .map_err(|e| NamelistError::parse_index(e, self.reader.position()))
+            .map_err(|e| Error::parse_index(e, self.reader.position()))
     }
 
     fn parse_numeric(&mut self) -> Result<LiteralConstant> {
@@ -115,11 +115,11 @@ impl<'a> Parser<'a> {
         let slice = self.reader.get_str(literal_begin, self.reader.offset());
         if is_float {
             Ok(LiteralConstant::Float(slice.parse::<f64>().map_err(
-                |e| NamelistError::parse_float(e, self.reader.position()),
+                |e| Error::parse_float(e, self.reader.position()),
             )?))
         } else {
             Ok(LiteralConstant::Int(slice.parse::<i64>().map_err(|e| {
-                NamelistError::parse_int(e, self.reader.position())
+                Error::parse_int(e, self.reader.position())
             })?))
         }
     }
@@ -131,9 +131,10 @@ impl<'a> Parser<'a> {
         while let Some(next_byte) = self.reader.next_byte() {
             if next_byte == quote {
                 if self.reader.peek_next_byte() != Some(quote) {
-                    return Ok(LiteralConstant::String(String::from_utf8(bytes).map_err(
-                        |_e| NamelistError::SyntaxError(self.reader.position()),
-                    )?));
+                    return Ok(LiteralConstant::String(
+                        String::from_utf8(bytes)
+                            .map_err(|e| Error::decode_utf8_str(e, self.reader.position()))?,
+                    ));
                 } else {
                     self.reader.skip_byte();
                 }
@@ -182,7 +183,11 @@ impl<'a> Parser<'a> {
                     let real_first_literal = self.parse_literal_constant()?;
                     Ok((i as usize, real_first_literal))
                 }
-                _ => Err(NamelistError::SyntaxError(self.reader.position())),
+                _ => Err(Error::unexpected_token(
+                    "Other constant",
+                    "Positive integer (number of repeats)",
+                    self.reader.position(),
+                )),
             }
         } else {
             Ok((1, first_literal))
@@ -236,13 +241,10 @@ impl<'a> Parser<'a> {
                 {
                     Item::Derived(m) => m,
                     _ => {
-                        return Err(NamelistError::AlreadyAssignedIndexed {
-                            idx,
-                            position: self.reader.position(),
-                        })
+                        return Err(Error::index_already_assigned(idx, self.reader.position()));
                     }
                 };
-                self.reader.skip_whitespace();
+                self.reader.skip_byte();
                 self.parse_name_value_pairs(next_keyvals)
             }
             Some(b'=') => {
@@ -251,10 +253,7 @@ impl<'a> Parser<'a> {
                 let rhs = self.parse_rhs()?;
 
                 if idxvals.contains_key(&idx) {
-                    return Err(NamelistError::AlreadyAssignedIndexed {
-                        idx,
-                        position: self.reader.position(),
-                    });
+                    return Err(Error::index_already_assigned(idx, self.reader.position()));
                 }
 
                 idxvals.insert(idx, rhs);
@@ -280,10 +279,7 @@ impl<'a> Parser<'a> {
                 {
                     Item::Derived(m) => m,
                     _ => {
-                        return Err(NamelistError::AlreadyAssigned {
-                            key: key.to_owned(),
-                            position: self.reader.position(),
-                        })
+                        return Err(Error::item_already_assigned(key, self.reader.position()));
                     }
                 };
                 self.reader.skip_whitespace();
@@ -298,10 +294,7 @@ impl<'a> Parser<'a> {
                 {
                     Item::Array(Array::Indexed(idxmap)) => idxmap,
                     _ => {
-                        return Err(NamelistError::AlreadyAssigned {
-                            key: key.to_owned(),
-                            position: self.reader.position(),
-                        })
+                        return Err(Error::item_already_assigned(key, self.reader.position()));
                     }
                 };
                 self.parse_index_value_pairs(next_idxvals)
@@ -312,10 +305,7 @@ impl<'a> Parser<'a> {
                 let rhs = self.parse_rhs()?;
 
                 if keyvals.contains_key(key) {
-                    return Err(NamelistError::AlreadyAssigned {
-                        key: key.to_owned(),
-                        position: self.reader.position(),
-                    });
+                    return Err(Error::item_already_assigned(key, self.reader.position()));
                 }
 
                 keyvals.insert(key.to_owned(), rhs);
@@ -336,7 +326,7 @@ impl<'a> Parser<'a> {
         self.parse_identifier()
     }
 
-    fn parse_unexpected_token(&mut self, expected: &str) -> NamelistError {
+    fn parse_unexpected_token(&mut self, expected: &str) -> Error {
         self.reader.skip_whitespace();
         let pos = self.reader.position();
         let start_offset = self.reader.offset();
@@ -352,11 +342,11 @@ impl<'a> Parser<'a> {
 
         let found_token = self.reader.get_str(start_offset, end_offset);
 
-        NamelistError::unexpected_token(found_token, expected, pos)
+        Error::unexpected_token(found_token, expected, pos)
     }
 
-    fn unexpected_eof(&mut self) -> NamelistError {
-        NamelistError::UnexpectedEOF(self.reader.position())
+    fn unexpected_eof(&mut self) -> Error {
+        Error::unexpted_eof(self.reader.position())
     }
 
     pub fn parse(&mut self) -> Result<NamelistGroup> {
@@ -402,7 +392,8 @@ mod tests {
         println!(
             "{:?}",
             Parser::new(
-                r#"&nml
+                r#"
+&nml
  a%b(1)%a = 1
 /
 "#

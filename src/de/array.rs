@@ -3,7 +3,7 @@ use serde::de::SeqAccess;
 use super::item::{BorrowedItemDeserializer, BorrowedLiteralDeserializer, ItemDeserializer};
 use crate::namelist::LiteralConstant;
 use crate::namelist::{Array, ArrayIter, ArrayRefIter, ItemRef};
-use crate::NamelistError;
+use crate::Error;
 
 pub struct ArraySeqAccess {
     iter: ArrayIter,
@@ -18,7 +18,7 @@ impl ArraySeqAccess {
 }
 
 impl<'de> SeqAccess<'de> for ArraySeqAccess {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
     where
@@ -41,7 +41,7 @@ impl<'a> BorrowedArraySeqAccess<'a> {
 }
 
 impl<'de, 'a> SeqAccess<'de> for BorrowedArraySeqAccess<'a> {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
     where

@@ -35,7 +35,7 @@
 //!     velocity: [f32; 3]
 //! }
 //!
-//! fn main() -> Result<(), nml::NamelistError> {
+//! fn main() -> Result<(), nml::Error> {
 //!     let p = Particle {
 //!         timestep: 0,
 //!         mass: 1.0,
@@ -70,7 +70,7 @@
 //!    velocity: [f32; 3]
 //! }
 //!
-//! fn main() -> Result<(), nml::NamelistError>{
+//! fn main() -> Result<(), nml::Error>{
 //!    let s = r#"
 //!        &simulation
 //!          start_time: 0,
@@ -131,8 +131,8 @@ mod parser;
 mod reader;
 mod ser;
 
-pub use error::NamelistError;
-pub type Result<T> = std::result::Result<T, NamelistError>;
+pub use error::Error;
+pub type Result<T> = std::result::Result<T, Error>;
 pub use de::GroupDeserializer;
 pub use de::GroupRefDeserializer;
 pub use namelist::group_from_str;

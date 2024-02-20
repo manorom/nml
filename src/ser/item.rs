@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::NamelistError;
+use super::Error;
 use crate::namelist::{Array, Item, LiteralConstant};
 
 use super::derived::DerivedSerializer;
@@ -9,7 +9,7 @@ pub struct SerializeItem;
 
 impl serde::ser::Serializer for SerializeItem {
     type Ok = Item;
-    type Error = NamelistError;
+    type Error = Error;
 
     type SerializeSeq = SerializeList;
 
@@ -17,13 +17,13 @@ impl serde::ser::Serializer for SerializeItem {
 
     type SerializeTupleStruct = SerializeList;
 
-    type SerializeTupleVariant = serde::ser::Impossible<Item, NamelistError>;
+    type SerializeTupleVariant = serde::ser::Impossible<Item, Error>;
 
     type SerializeMap = DerivedSerializer;
 
     type SerializeStruct = DerivedSerializer;
 
-    type SerializeStructVariant = serde::ser::Impossible<Item, NamelistError>;
+    type SerializeStructVariant = serde::ser::Impossible<Item, Error>;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
         Ok(Item::Literal(LiteralConstant::Bool(v)))
@@ -60,7 +60,7 @@ impl serde::ser::Serializer for SerializeItem {
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
         self.serialize_u32(
             v.try_into()
-                .map_err(|_| NamelistError::UnsupportedSerialization)?,
+                .map_err(|_| Error::unsupported_serialization())?,
         )
     }
 
@@ -81,7 +81,7 @@ impl serde::ser::Serializer for SerializeItem {
     }
 
     fn serialize_bytes(self, _v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::unsupported_serialization())
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
@@ -133,7 +133,7 @@ impl serde::ser::Serializer for SerializeItem {
     where
         T: serde::Serialize,
     {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::unsupported_serialization())
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
@@ -159,7 +159,7 @@ impl serde::ser::Serializer for SerializeItem {
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::unsupported_serialization())
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
@@ -181,7 +181,7 @@ impl serde::ser::Serializer for SerializeItem {
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        Err(NamelistError::UnsupportedSerialization)
+        Err(Error::unsupported_serialization())
     }
 }
 
@@ -203,7 +203,7 @@ impl SerializeList {
 impl serde::ser::SerializeSeq for SerializeList {
     type Ok = Item;
 
-    type Error = NamelistError;
+    type Error = Error;
 
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
     where
@@ -213,10 +213,10 @@ impl serde::ser::SerializeSeq for SerializeList {
             if self.is_type_compatible(&lit) {
                 Ok(lit)
             } else {
-                Err(NamelistError::UnsupportedSerialization)
+                Err(Error::unsupported_serialization())
             }
         } else {
-            Err(NamelistError::UnsupportedSerialization)
+            Err(Error::unsupported_serialization())
         }?;
 
         self.list.push((1, lit));
@@ -231,7 +231,7 @@ impl serde::ser::SerializeSeq for SerializeList {
 
 impl serde::ser::SerializeTuple for SerializeList {
     type Ok = Item;
-    type Error = NamelistError;
+    type Error = Error;
 
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
     where
@@ -241,10 +241,10 @@ impl serde::ser::SerializeTuple for SerializeList {
             if self.is_type_compatible(&lit) {
                 Ok(lit)
             } else {
-                Err(NamelistError::UnsupportedSerialization)
+                Err(Error::unsupported_serialization())
             }
         } else {
-            Err(NamelistError::UnsupportedSerialization)
+            Err(Error::unsupported_serialization())
         }?;
 
         self.list.push((1, lit));
@@ -260,7 +260,7 @@ impl serde::ser::SerializeTuple for SerializeList {
 impl serde::ser::SerializeTupleStruct for SerializeList {
     type Ok = Item;
 
-    type Error = NamelistError;
+    type Error = Error;
 
     fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
     where
@@ -268,12 +268,12 @@ impl serde::ser::SerializeTupleStruct for SerializeList {
     {
         let lit = if let Item::Literal(lit) = value.serialize(SerializeItem)? {
             if self.is_type_compatible(&lit) {
-                Err(NamelistError::UnsupportedSerialization)
+                Err(Error::unsupported_serialization())
             } else {
                 Ok(lit)
             }
         } else {
-            Err(NamelistError::UnsupportedSerialization)
+            Err(Error::unsupported_serialization())
         }?;
 
         self.list.push((1, lit));

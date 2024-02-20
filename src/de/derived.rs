@@ -1,12 +1,12 @@
 use super::item::{BorrowedItemDeserializer, ItemDeserializer};
-use super::NamelistError;
+use super::Error;
 use crate::namelist::Item;
 use crate::namelist::{Map, MapIntoIter, MapIter};
 
 pub(super) struct KeyDeserializer(pub(super) String);
 
 impl<'de> serde::de::Deserializer<'de> for KeyDeserializer {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -44,7 +44,7 @@ impl ItemMapAccess {
 }
 
 impl<'de> serde::de::MapAccess<'de> for ItemMapAccess {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
     where
@@ -75,7 +75,7 @@ impl<'de> serde::de::MapAccess<'de> for ItemMapAccess {
 struct BorrowedKeyDeserializer<'a>(&'a str);
 
 impl<'a, 'de> serde::de::Deserializer<'de> for BorrowedKeyDeserializer<'a> {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -113,7 +113,7 @@ impl<'a> BorrowedItemMapAccess<'a> {
 }
 
 impl<'de, 'a> serde::de::MapAccess<'de> for BorrowedItemMapAccess<'a> {
-    type Error = NamelistError;
+    type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
     where

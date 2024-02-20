@@ -1,5 +1,5 @@
 use crate::de::{GroupDeserializer, GroupRefDeserializer};
-use crate::error::NamelistError;
+use crate::error::Error;
 use crate::formatter::NamelistFormatter;
 use crate::parser::Parser;
 use crate::ser::GroupSerializer;
@@ -42,7 +42,7 @@ impl std::ops::Deref for NamelistGroup {
 }
 
 impl FromStr for NamelistGroup {
-    type Err = NamelistError;
+    type Err = Error;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         Parser::new(s).parse()
@@ -75,7 +75,7 @@ impl std::fmt::Display for NamelistGroup {
 ///    velocity: [f32; 3]
 /// }
 ///
-/// fn main() -> Result<(), nml::NamelistError>{
+/// fn main() -> Result<(), nml::Error>{
 ///    let s = r#"
 ///        &particle
 ///         index = 0,
@@ -152,7 +152,7 @@ where
 ///    velocity: [f32; 3]
 /// }
 ///
-/// fn main() -> Result<(), nml::NamelistError>{
+/// fn main() -> Result<(), nml::Error>{
 ///    let s = r#"
 ///        &simulation
 ///          start_time: 0,
